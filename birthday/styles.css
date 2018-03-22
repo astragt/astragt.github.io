@@ -23,3 +23,14 @@ html {
     text-align: center;
 
 }
+.crossword {
+
+    margin-bottom: 50px;
+
+}
+.crossrow:hover .crossletter {
+
+    border-color: green;
+    cursor: pointer;
+
+}
