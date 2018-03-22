@@ -74,3 +74,15 @@ html {
     margin-left: 240px;
 
 }
+.rules {
+
+    border: 3px solid;
+    border-radius: 50px;
+    margin-bottom: 50px;
+
+}
+h1 {
+
+    color: pink;
+
+}
