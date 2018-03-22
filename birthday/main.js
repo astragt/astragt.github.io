@@ -7,7 +7,7 @@ jQuery(".crossrow").on("click", function(){
     jQuery(".answer").focus();
 });
 jQuery(".answer").on("keydown", function () {
-   jQuery(this).val(jQuery(this).val.substr(0, jQuery(this).attr("data-current-solution").length))
+    jQuery(this).val(jQuery(this).val().substr(0, jQuery(this).attr("data-current-solution").length));
     if(jQuery(this).val().toLowerCase() === jQuery(this).attr("data-current-solution")) {
         jQuery(".question-box").hide();
         jQuery('html, body').animate({
