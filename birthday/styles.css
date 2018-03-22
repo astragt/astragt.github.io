@@ -60,10 +60,13 @@ html {
     margin-left: 480px;
 
 }
-.crossrow-10,.crossrow-15 {
+.crossrow-10 {
 
     margin-left: 120px;
 
+}
+.crossrow-15{
+    margin-left: 180px;
 }
 .crossrow.crossrow-11 {
 
