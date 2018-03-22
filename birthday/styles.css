@@ -34,3 +34,43 @@ html {
     cursor: pointer;
 
 }
+.crossrow.crossrow-2 {
+
+    margin-left: 420px;
+
+}
+.crossrow-3,.crossrow-1,.crossrow-5,.crossrow-9,.crossrow-16 {
+
+    margin-left: 540px;
+
+}
+.crossrow-6,.crossrow-13 {
+
+    margin-left: 300px;
+
+}
+.crossrow.crossrow-7 {
+
+    margin-left: 420px;
+
+}
+.crossrow-8,.crossrow-14 {
+
+    margin-left: 480px;
+
+}
+.crossrow-10,.crossrow-15 {
+
+    margin-left: 120px;
+
+}
+.crossrow.crossrow-11 {
+
+    margin-left: 360px;
+
+}
+.crossrow.crossrow-12 {
+
+    margin-left: 240px;
+
+}
