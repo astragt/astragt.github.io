@@ -115,3 +115,9 @@ Element {
     text-align: center;
 
 }
+::selection {
+    background: white;
+}
+::-moz-selection {
+    background: white;
+}
