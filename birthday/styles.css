@@ -17,10 +17,11 @@ html {
 }
 .crossletter {
 
-    border: 5px solid;
+    border: 5px solid black;
     display: inline-block;
     float: left;
     width: 50px;
+    color: white;
 
 }
 .crossword {
@@ -84,5 +85,33 @@ html {
 h1 {
 
     color: pink;
+
+}
+.question {
+
+    display: block;
+    font-weight: bold;
+
+}
+.question-box {
+
+    border: 3px solid;
+    border-radius: 50px;
+    padding: 20px;
+
+}
+Element {
+
+}
+.answer {
+
+    width: 80%;
+    height: 43px;
+    border-bottom: 2px solid;
+    border-right: none;
+    border-left: none;
+    border-top: none;
+    font-size: 40px;
+    text-align: center;
 
 }
