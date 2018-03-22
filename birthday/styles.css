@@ -2,6 +2,7 @@ html {
 
     font-family: Arial;
     font-size: 40px;
+    text-align: center;
 
 }
 .crossletter.solutionletter {
@@ -20,7 +21,6 @@ html {
     display: inline-block;
     float: left;
     width: 50px;
-    text-align: center;
 
 }
 .crossword {
