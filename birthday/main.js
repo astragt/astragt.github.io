@@ -6,7 +6,7 @@ jQuery(".crossrow").on("click", function(){
     jQuery("html, body").animate({ scrollTop: jQuery(document).height() }, "slow");
     jQuery(".answer").focus();
 });
-jQuery(".answer").on("keydown", function () {
+jQuery(".answer").on("input", function () {
     console.log(jQuery(this).val());
     if(jQuery(this).val().toLowerCase() === jQuery(this).attr("data-current-solution")) {
         jQuery('html, body').animate({
