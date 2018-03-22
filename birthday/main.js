@@ -7,6 +7,7 @@ jQuery(".crossrow").on("click", function(){
     jQuery(".answer").focus();
 });
 jQuery(".answer").on("keydown", function () {
+    console.log(jQuery(this).val());
     if(jQuery(this).val().toLowerCase() === jQuery(this).attr("data-current-solution")) {
         jQuery('html, body').animate({
             scrollTop: jQuery(".crossboard").offset().top
@@ -14,8 +15,8 @@ jQuery(".answer").on("keydown", function () {
             jQuery(".question-box").hide();
         });
         jQuery(this).val("");
-        jQuery("#"+jQuery(".question-box").attr("data-current-question")+" .crossletter").style("color", "black");
-        jQuery("#"+jQuery(".question-box").attr("data-current-question")+" span").style("opacity", "1");
+        jQuery("#"+jQuery(".question-box").attr("data-current-question")+" .crossletter").css("color", "black");
+        jQuery("#"+jQuery(".question-box").attr("data-current-question")+" span").css("opacity", "1");
     }
     jQuery(this).val(jQuery(this).val().substr(0, jQuery(this).attr("data-current-solution").length));
 });
