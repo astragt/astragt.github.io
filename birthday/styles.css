@@ -1,0 +1,25 @@
+html {
+
+    font-family: Arial;
+    font-size: 40px;
+
+}
+.crossletter.solutionletter {
+    border-color: red;
+}
+.crossrow {
+
+    display: flex;
+    width: 100%;
+    margin: 0;
+
+}
+.crossletter {
+
+    border: 5px solid;
+    display: inline-block;
+    float: left;
+    width: 50px;
+    text-align: center;
+
+}
