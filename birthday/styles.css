@@ -112,10 +112,10 @@ h1 {
     text-align: center;
 
 }
-::selection {
+.crossboard::selection {
     background: white;
 }
-::-moz-selection {
+.crossboard::-moz-selection {
     background: white;
 }
 .crossletter span {
