@@ -118,3 +118,8 @@ h1 {
 ::-moz-selection {
     background: white;
 }
+.crossletter span {
+
+    opacity: 0;
+
+}
