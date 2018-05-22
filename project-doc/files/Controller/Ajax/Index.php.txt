@@ -1,0 +1,120 @@
+<?php
+namespace Econsor\ProductPriceInterface\Controller\Ajax;
+
+use Magento\Framework\App\Action\Context;
+use Magento\Framework\App\ResponseInterface;
+use Magento\Catalog\Model\ProductRepository;
+use Econsor\ProductPriceInterface\Model\ProductPriceBreaks;
+use Magento\Customer\Model\Session as CustomerSession;
+use Magento\Customer\Api\GroupRepositoryInterface;
+use Magento\Framework\Controller\Result\JsonFactory;
+
+/**
+ * Class Index
+ * @package Econsor\ProductPriceInterface\Controller\Ajax
+ */
+class Index extends \Magento\Framework\App\Action\Action
+{
+    /**
+     * @var ProductRepository
+     */
+    protected $_productRepository;
+    /**
+     * @var ProductPriceBreaks
+     */
+    protected $_productPriceBreaks;
+    /**
+     * @var CustomerSession
+     */
+    protected $_customerSession;
+    /**
+     * @var GroupRepositoryInterface
+     */
+    protected $_groupRepository;
+    /**
+     * @var JsonFactory
+     */
+    protected $_resultJsonFactory;
+
+    /**
+     * Index constructor.
+     * @param Context $context
+     * @param ProductRepository $productRepository
+     * @param ProductPriceBreaks $productPriceBreaks
+     * @param CustomerSession $customerSession
+     * @param GroupRepositoryInterface $groupRepository
+     * @param JsonFactory $resultJsonFactory
+     */
+    public function __construct(
+        Context $context,
+        ProductRepository $productRepository,
+        ProductPriceBreaks $productPriceBreaks,
+        CustomerSession $customerSession,
+        GroupRepositoryInterface $groupRepository,
+        JsonFactory $resultJsonFactory
+    )
+    {
+        parent::__construct($context);
+        $this->_productRepository = $productRepository;
+        $this->_productPriceBreaks = $productPriceBreaks;
+        $this->_customerSession = $customerSession;
+        $this->_groupRepository = $groupRepository;
+        $this->_resultJsonFactory = $resultJsonFactory;
+    }
+
+    /**
+     * Execute action based on request and return result
+     *
+     * Note: Request will be added as operation argument in future
+     *
+     * @return \Magento\Framework\Controller\ResultInterface|ResponseInterface
+     * @throws \Magento\Framework\Exception\NotFoundException
+     */
+    public function execute()
+    {
+        $result = $this->_resultJsonFactory->create();
+        if($this->_customerSession->isLoggedIn() && $this->_customerSession->getCustomerGroupId() > 3){
+            if($productId = $this->_request->getParam("productId")){
+                $product = $this->_productRepository->getById($productId);
+                $skipPrices = $this->_customerSession->getSkipPrices()?:[];
+                if($product->getSku() != "" && !in_array($product->getId(), $skipPrices)){
+                    $group = $this->_groupRepository->getById($this->_customerSession->getCustomerGroupId());
+                    $priceBreaks = $this->_productPriceBreaks->setProductCode($product->getSku())
+                                              ->setAccountNumber($group->getCode())
+                                              ->getPriceBreaks();
+                    if(count($priceBreaks) > 0){
+                        $setPrices = $this->_customerSession->getGeneratedPrices() ?:[];
+                        $setPrices[$productId] = $priceBreaks;
+                        $this->_customerSession->setGeneratedPrices($setPrices);
+
+                        $defaultPriceBreaks = array_filter($priceBreaks, function ($item){
+                            return (isset($item["Quantity"]) && $item["Quantity"] == 1 ? true : false);
+                        });
+
+                        foreach ($defaultPriceBreaks as $key => $defaultPriceBreak){
+                            $defaultPrice = $defaultPriceBreak["Price"];
+                            $jsArray["finalPrice"]["amount"] = $defaultPrice;
+                            $jsArray["basePrice"]["amount"] = $defaultPrice;
+                            $jsArray["oldPrice"]["amount"] = $defaultPrice;
+                            unset($priceBreaks[$key]);
+                        }
+
+                        if (isset($defaultPrice)) {
+                            $jsArray["tierPrices"] = array_map(function($item) use ($defaultPrice){
+
+                                $processArr["qty"] = $item["Quantity"];
+                                $processArr["price"] = $item["Price"];
+                                $processArr["percentage"] = round(((1-$item["Price"]/$defaultPrice)*100), 2);
+                                return $processArr;
+                            }, $priceBreaks);
+
+                            if(isset($jsArray) && is_array($jsArray) && count($jsArray))
+                                return $result->setData($jsArray);
+                        }
+                    }
+                }
+            }
+        }
+        return $result->setData("{}");
+    }
+}

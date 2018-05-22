@@ -1,0 +1,102 @@
+<?php
+namespace Econsor\ProductPriceInterface\Plugin\Controller\Account;
+
+use Magento\Customer\Controller\Account\LoginPost;
+use Magento\Customer\Model\Session as CustomerSession;
+use Econsor\ProductPriceInterface\Model\TierPriceManager;
+use Magento\Checkout\Model\Session as CheckoutSession;
+use Magento\Customer\Api\GroupRepositoryInterface;
+use Econsor\ProductPriceInterface\Model\ProductPriceBreaksFactory;
+use Magento\Framework\Message\ManagerInterface as MessageManager;
+
+/**
+ * Class LoginPostPlugin
+ * @package Econsor\ProductPriceInterface\Plugin\Controller\Account
+ */
+class LoginPostPlugin
+{
+    /**
+     * @var CustomerSession
+     */
+    protected $_customerSession;
+    /**
+     * @var TierPriceManager
+     */
+    protected $_tierPriceManager;
+    /**
+     * @var CheckoutSession
+     */
+    protected $_checkoutSession;
+    /**
+     * @var GroupRepositoryInterface
+     */
+    protected $_groupRepository;
+    /**
+     * @var ProductPriceBreaksFactory
+     */
+    protected $_productPriceBreaksFactory;
+    /**
+     * @var MessageManager
+     */
+    protected $_messageManager;
+
+    /**
+     * LoginPostPlugin constructor.
+     * @param CustomerSession $customerSession
+     * @param TierPriceManager $tierPriceManager
+     * @param CheckoutSession $checkoutSession
+     * @param GroupRepositoryInterface $groupRepository
+     * @param ProductPriceBreaksFactory $productPriceBreaksFactory
+     * @param MessageManager $messageManager
+     */
+    public function __construct(
+        CustomerSession $customerSession,
+        TierPriceManager $tierPriceManager,
+        CheckoutSession $checkoutSession,
+        GroupRepositoryInterface $groupRepository,
+        ProductPriceBreaksFactory $productPriceBreaksFactory,
+        MessageManager $messageManager
+    )
+    {
+        $this->_customerSession = $customerSession;
+        $this->_tierPriceManager = $tierPriceManager;
+        $this->_checkoutSession = $checkoutSession;
+        $this->_groupRepository = $groupRepository;
+        $this->_productPriceBreaksFactory = $productPriceBreaksFactory;
+        $this->_messageManager = $messageManager;
+    }
+
+    /**
+     * @param LoginPost $subject
+     * @param $result
+     * @return mixed
+     * @throws \Magento\Framework\Exception\LocalizedException
+     * @throws \Magento\Framework\Exception\NoSuchEntityException
+     */
+    public function afterExecute(LoginPost $subject, $result){
+        if($this->_customerSession->isLoggedIn() && $this->_customerSession->getCustomerGroupId() > 3){
+            $this->_tierPriceManager->setGroupId($this->_customerSession->getCustomerGroupId())->deleteByGroupId();
+
+            $customerGroup = $this->_groupRepository->getById($this->_customerSession->getCustomerGroupId());
+            $cartItems = $this->_checkoutSession->getQuote()->getAllVisibleItems();
+
+            if (count($cartItems) > 0) {
+                foreach ($cartItems as $cartItem) {
+                    $productPriceBreakInterface = $this->_productPriceBreaksFactory->create();
+                    $priceBreaks[] = $productPriceBreakInterface->setAccountNumber($customerGroup->getCode())
+                        ->setProductCode($cartItem->getSku())
+                        ->getPriceBreaks();
+
+                    $this->_tierPriceManager->setGroupId($this->_customerSession->getCustomerGroupId())->deleteByGroupIdForProduct($cartItem->getSku());
+                }
+                if(isset($priceBreaks) && is_array($priceBreaks) && count($priceBreaks) > 0){
+                    $this->_tierPriceManager->setGroupId($this->_customerSession->getCustomerGroupId())
+                        ->setTierPricesDataArray($priceBreaks)
+                        ->saveTierPrices();
+                }
+                $this->_messageManager->addNoticeMessage(__("Preise der Produkte im Warenkorb wurden auf den neusten Stand aktualisert"));
+            }
+        }
+        return $result;
+    }
+}

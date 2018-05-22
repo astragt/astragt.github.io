@@ -1,0 +1,93 @@
+<?php
+namespace Econsor\ProductPriceInterface\Model\Cache;
+
+use \Econsor\ProductPriceInterface\Helper\Data as Config;
+use \Econsor\ProductPriceInterface\Model\Cache\Type as Cache;
+
+/**
+ * Class AuthCodeCache
+ * @package Econsor\ProductPriceInterface\Model\Cache
+ */
+class AuthCodeCache
+{
+    /**
+     * @var string
+     */
+    const TYPE_IDENTIFIER = "productpriceinterface_authcode_cache";
+
+    /**
+     * @var string
+     */
+    const XML_PATH_INTERFACE_USERNAME = "productpriceinterface/access/username";
+
+    /**
+     * @var string
+     */
+    const XML_PATH_INTERFACE_PASSWORD = "productpriceinterface/access/password";
+    /**
+     * @var Config
+     */
+    protected $_config;
+    /**
+     * @var \Zend\Soap\ClientFactory
+     */
+    protected $_soapClientFactory;
+    /**
+     * @var Type
+     */
+    protected $_cache;
+    /**
+     * @var \Magento\Framework\Serialize\SerializerInterface
+     */
+    protected $_serializer;
+
+    /**
+     * AuthCodeCache constructor.
+     * @param Config $config
+     * @param \Zend\Soap\ClientFactory $soapClientFactory
+     * @param Type $cache
+     * @param \Magento\Framework\Serialize\SerializerInterface $serializer
+     */
+    public function __construct(
+        Config $config,
+        \Zend\Soap\ClientFactory $soapClientFactory,
+        Cache $cache,
+        \Magento\Framework\Serialize\SerializerInterface $serializer
+    )
+    {
+        $this->_config = $config;
+        $this->_soapClientFactory = $soapClientFactory;
+        $this->_cache = $cache;
+        $this->_serializer = $serializer;
+    }
+
+    /**
+     * @return array|bool
+     */
+    public function getAuthToken(){
+        if(($interfaceUrl = $this->_config->getInterfaceUrl()) && ($username = $this->_config->getConfig(self::XML_PATH_INTERFACE_USERNAME)) && ($password = $this->_config->getConfig(self::XML_PATH_INTERFACE_PASSWORD))){
+            if(!$this->_cache->test(self::TYPE_IDENTIFIER)){
+                /** @var \Zend\Soap\Client $soapClient */
+                $soapClient = $this->_soapClientFactory->create();
+                $soapClient->setWSDL($interfaceUrl);
+                $requestParams = [
+                    "username" => $username,
+                    "password" => $password
+                ];
+
+                try {
+                    $response = $soapClient->GetAuthToken($requestParams)->GetAuthTokenResult;
+                } catch (\Exception $exception) {
+                    //TODO Log exception during AuthCodeGeneration
+                    return false;
+                }
+
+                $this->_cache->save($this->_serializer->serialize($response), self::TYPE_IDENTIFIER, [Cache::CACHE_TAG], 86400);
+                return $response;
+            }
+            return $this->_serializer->unserialize($this->_cache->load(self::TYPE_IDENTIFIER));
+        }
+        //TODO Log unset config cant generate AuthCode
+        return false;
+    }
+}

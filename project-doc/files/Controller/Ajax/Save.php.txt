@@ -1,0 +1,68 @@
+<?php
+
+namespace Econsor\ProductPriceInterface\Controller\Ajax;
+
+
+use Magento\Framework\App\Action\Context;
+use Magento\Framework\App\ResponseInterface;
+use Econsor\ProductPriceInterface\Model\TierPriceManager;
+use Magento\Customer\Model\Session as CustomerSession;
+use Magento\Framework\Controller\ResultFactory;
+
+/**
+ * Class Save
+ * @package Econsor\ProductPriceInterface\Controller\Ajax
+ */
+class Save extends \Magento\Framework\App\Action\Action
+{
+
+    /**
+     * @var CustomerSession
+     */
+    protected $_customerSession;
+    /**
+     * @var TierPriceManager
+     */
+    protected $_tierPriceManager;
+
+    /**
+     * Save constructor.
+     * @param Context $context
+     * @param CustomerSession $customerSession
+     * @param TierPriceManager $tierPriceManager
+     */
+    public function __construct(
+        Context $context,
+        CustomerSession $customerSession,
+        TierPriceManager $tierPriceManager
+    )
+    {
+        parent::__construct($context);
+        $this->_customerSession = $customerSession;
+        $this->_tierPriceManager = $tierPriceManager;
+    }
+
+    /**
+     * Execute action based on request and return result
+     *
+     * Note: Request will be added as operation argument in future
+     *
+     * @return \Magento\Framework\Controller\ResultInterface|ResponseInterface
+     * @throws \Magento\Framework\Exception\NotFoundException
+     */
+    public function execute()
+    {
+        $priceBreaks = $this->_customerSession->getGeneratedPrices();
+        if(isset($priceBreaks) && is_array($priceBreaks) && count($priceBreaks) > 0){
+            $this->_tierPriceManager->setGroupId($this->_customerSession->getCustomerGroupId())
+                ->setTierPricesDataArray($priceBreaks)
+                ->saveTierPrices();
+            $this->_customerSession->setGeneratedPrices([]);
+            $skipPrices = $this->_customerSession->getSkipPrices()?:[];
+            $skipPrices = array_merge($skipPrices, array_keys($priceBreaks));
+
+            $this->_customerSession->setSkipPrices($skipPrices);
+        }
+        return $this->resultFactory->create(ResultFactory::TYPE_RAW);
+    }
+}

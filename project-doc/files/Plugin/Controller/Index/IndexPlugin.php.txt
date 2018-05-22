@@ -1,0 +1,110 @@
+<?php
+namespace Econsor\ProductPriceInterface\Plugin\Controller\Index;
+
+use Magento\Checkout\Controller\Index\Index;
+use Magento\Customer\Api\GroupRepositoryInterface;
+use Econsor\ProductPriceInterface\Model\PriceBreakCheck;
+use Magento\Customer\Model\Session;
+use Econsor\ProductPriceInterface\Model\TierPriceManager;
+use Econsor\ProductPriceInterface\Model\ProductPriceBreaksFactory;
+use Magento\Framework\Message\ManagerInterface as MessageManager;
+use Magento\Framework\Controller\ResultInterface;
+use Magento\Framework\Controller\Result\RedirectFactory;
+
+/**
+ * Class IndexPlugin
+ * @package Econsor\ProductPriceInterface\Plugin\Controller\Index
+ */
+class IndexPlugin
+{
+    /**
+     * @var \Magento\Customer\Model\Session
+     */
+    protected $_customerSession;
+    /**
+     * @var \Econsor\ProductPriceInterface\Model\PriceBreakCheck
+     */
+    protected $_priceBreakCheck;
+    /**
+     * @var GroupRepositoryInterface
+     */
+    protected $_groupRepository;
+    /**
+     * @var TierPriceManager
+     */
+    protected $_tierPriceManager;
+    /**
+     * @var ProductPriceBreaksFactory
+     */
+    protected $_productPriceBreaksFactory;
+    /**
+     * @var MessageManager
+     */
+    protected $_messageManager;
+    /**
+     * @var RedirectFactory
+     */
+    protected $_redirectFactory;
+
+    /**
+     * IndexPlugin constructor.
+     * @param Session $customerSession
+     * @param PriceBreakCheck $priceBreakCheck
+     * @param GroupRepositoryInterface $groupRepository
+     * @param TierPriceManager $tierPriceManager
+     * @param ProductPriceBreaksFactory $productPriceBreaksFactory
+     * @param MessageManager $messageManager
+     * @param RedirectFactory $redirectFactory
+     */
+    public function __construct(
+        Session $customerSession,
+        PriceBreakCheck $priceBreakCheck,
+        GroupRepositoryInterface $groupRepository,
+        TierPriceManager $tierPriceManager,
+        ProductPriceBreaksFactory $productPriceBreaksFactory,
+        MessageManager $messageManager,
+        RedirectFactory $redirectFactory
+    )
+    {
+        $this->_customerSession = $customerSession;
+        $this->_priceBreakCheck = $priceBreakCheck;
+        $this->_groupRepository = $groupRepository;
+        $this->_tierPriceManager = $tierPriceManager;
+        $this->_productPriceBreaksFactory = $productPriceBreaksFactory;
+        $this->_messageManager = $messageManager;
+        $this->_redirectFactory = $redirectFactory;
+    }
+
+
+    /**
+     * @param Index $subject
+     * @param ResultInterface $result
+     */
+    public function afterExecute(Index $subject, $result){
+        if($this->_customerSession->isLoggedIn() && $this->_customerSession->getCustomerGroupId() > 3){
+            $customerGroup = $this->_groupRepository->getById($this->_customerSession->getCustomerGroupId());
+            $changedPriceSkus = $this->_priceBreakCheck->setAccountNumber($customerGroup->getCode())
+                                                    ->checkCartPrices();
+            if (count($changedPriceSkus) > 0) {
+                foreach ($changedPriceSkus as $changedPriceSku) {
+                    $productPriceBreakInterface = $this->_productPriceBreaksFactory->create();
+                    $priceBreaks = $productPriceBreakInterface->setAccountNumber($customerGroup->getCode())
+                        ->setProductCode($changedPriceSku)
+                        ->getPriceBreaks();
+
+                    $this->_tierPriceManager->setGroupId($this->_customerSession->getCustomerGroupId())->deleteByGroupIdForProduct($changedPriceSku);
+
+                    if(isset($priceBreaks) && is_array($priceBreaks) && count($priceBreaks) > 0){
+                        $this->_tierPriceManager->setGroupId($this->_customerSession->getCustomerGroupId())
+                            ->setTierPricesDataArray($priceBreaks)
+                            ->saveTierPrices();
+                    }
+                }
+                $this->_messageManager->addNoticeMessage(__("Produkt Preise wurden auf den neusten Stand aktualisert"));
+
+                return $this->_redirectFactory->create()->setPath("checkout/cart");
+            }
+        }
+        return $result;
+    }
+}

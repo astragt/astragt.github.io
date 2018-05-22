@@ -1,0 +1,59 @@
+<?php
+namespace Econsor\ProductPriceInterface\Plugin\Block\Product\View\Type;
+
+use Magento\ConfigurableProduct\Block\Product\View\Type\Configurable;
+use Magento\Framework\Serialize\SerializerInterface;
+use Magento\Framework\UrlInterface;
+use Magento\Customer\Model\Session as CustomerSession;
+
+/**
+ * Class ConfigurablePlugin
+ * @package Econsor\ProductPriceInterface\Plugin\Block\Product\View\Type
+ */
+class ConfigurablePlugin
+{
+    /**
+     * @var SerializerInterface
+     */
+    protected $_serializer;
+    /**
+     * @var UrlInterface
+     */
+    protected $_urlBuilder;
+    /**
+     * @var CustomerSession
+     */
+    protected $_customerSession;
+
+    /**
+     * ConfigurablePlugin constructor.
+     * @param SerializerInterface $serializer
+     * @param UrlInterface $urlBuilder
+     * @param CustomerSession $customerSession
+     */
+    public function __construct(
+        SerializerInterface $serializer,
+        UrlInterface $urlBuilder,
+        CustomerSession $customerSession
+    )
+    {
+        $this->_serializer = $serializer;
+        $this->_urlBuilder = $urlBuilder;
+        $this->_customerSession = $customerSession;
+    }
+
+    /**
+     * @param Configurable $subject
+     * @param $result
+     * @return bool|string
+     */
+    public function afterGetJsonConfig(Configurable $subject, $result){
+        $currentOptions = $this->_serializer->unserialize($result);
+        $currentOptions["priceInterface"]["interfaceGetUrl"] = $this->_urlBuilder->getUrl("priceloader/ajax/index");
+        $currentOptions["priceInterface"]["interfaceSaveUrl"] = $this->_urlBuilder->getUrl("priceloader/ajax/save");
+        $skipPrices = $this->_customerSession->getSkipPrices();
+        if(is_array($skipPrices) && count($skipPrices) > 0)
+            $currentOptions["priceInterface"]["skipPrices"] = implode(",", $skipPrices);
+        return $this->_serializer->serialize($currentOptions);
+    }
+}

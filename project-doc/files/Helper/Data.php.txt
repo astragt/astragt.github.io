@@ -1,0 +1,30 @@
+<?php
+
+namespace Econsor\ProductPriceInterface\Helper;
+
+/**
+ * Class Data
+ * @package Econsor\ProductPriceInterface\Helper
+ */
+class Data extends \Magento\Framework\App\Helper\AbstractHelper
+{
+    /**
+     * @var string
+     */
+    const XML_PATH_INTERFACE_URL = "productpriceinterface/general/url";
+
+    /**
+     * @return string
+     */
+    public function getInterfaceUrl(){
+        return $this->scopeConfig->getValue(self::XML_PATH_INTERFACE_URL);
+    }
+
+    /**
+     * @param string $path
+     * @return mixed
+     */
+    public function getConfig($path){
+        return $this->scopeConfig->getValue($path);
+    }
+}

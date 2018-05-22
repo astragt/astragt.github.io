@@ -1,0 +1,112 @@
+<?php
+namespace Econsor\ProductPriceInterface\Model;
+
+use \Magento\Catalog\Api\ScopedProductTierPriceManagementInterface;
+use \Magento\Catalog\Api\Data\ProductTierPriceInterfaceFactory;
+use \Magento\Catalog\Api\Data\ProductTierPriceInterface;
+use \Magento\Framework\App\ResourceConnection;
+
+/**
+ * Class TierPriceManager
+ * @package Econsor\ProductPriceInterface\Model
+ */
+class TierPriceManager
+{
+    /**
+     * @var ScopedProductTierPriceManagementInterface
+     */
+    protected $_scopedProductTierPriceManagement;
+    /**
+     * @var ProductTierPriceInterfaceFactory
+     */
+    protected $_productTierPriceFactory;
+    /**
+     * @var string
+     */
+    protected $_groupId;
+    /**
+     * @var array
+     */
+    protected $_tierPricesDataArray;
+    /**
+     * @var ResourceConnection
+     */
+    protected $_resourceConnection;
+
+    /**
+     * TierPriceManager constructor.
+     * @param ScopedProductTierPriceManagementInterface $scopedProductTierPriceManagement
+     * @param ProductTierPriceInterfaceFactory $productTierPriceFactory
+     * @param ResourceConnection $resourceConnection
+     */
+    public function __construct(
+        ScopedProductTierPriceManagementInterface $scopedProductTierPriceManagement,
+        ProductTierPriceInterfaceFactory $productTierPriceFactory,
+        ResourceConnection $resourceConnection
+    )
+    {
+        $this->_scopedProductTierPriceManagement = $scopedProductTierPriceManagement;
+        $this->_productTierPriceFactory = $productTierPriceFactory;
+        $this->_resourceConnection = $resourceConnection;
+    }
+
+    /**
+     * @param string $groupCode
+     * @return TierPriceManager
+     */
+    public function setGroupId(string $groupId): TierPriceManager
+    {
+        $this->_groupId = $groupId;
+        return $this;
+    }
+
+    /**
+     * @param array $tierPriceData
+     * @return TierPriceManager
+     */
+    public function setTierPricesDataArray(array $tierPricesDataArray): TierPriceManager
+    {
+        $this->_tierPricesDataArray = $tierPricesDataArray;
+        return $this;
+    }
+
+    /**
+     * @return void
+     */
+    public function saveTierPrices(){
+        if(isset($this->_groupId) && isset($this->_tierPricesDataArray) && is_array($this->_tierPricesDataArray) && count($this->_tierPricesDataArray) > 0){
+            foreach($this->_tierPricesDataArray as $tierPriceDataArray){
+                foreach ($tierPriceDataArray as $tierPriceData) {
+                    /** @var ProductTierPriceInterface $tierPrice */
+                    $tierPrice = $this->_productTierPriceFactory->create();
+                    $tierPrice->setCustomerGroupId($this->_groupId)
+                        ->setQty((float)$tierPriceData["Quantity"])
+                        ->setValue((float)$tierPriceData["Price"]);
+                    $this->_scopedProductTierPriceManagement->add($tierPriceData["ProductCode"], $tierPrice);
+                }
+
+            }
+        }
+    }
+
+    /**
+     * @return void
+     */
+    public function deleteByGroupId(){
+        if($this->_groupId){
+            $con = $this->_resourceConnection->getConnection();
+            $query = "DELETE FROM ".$this->_resourceConnection->getTableName("catalog_product_entity_tier_price")." WHERE customer_group_id = ".$this->_groupId;
+            $con->query($query);
+        }
+    }
+
+    /**
+     * @param string $sku
+     * @return void
+     */
+    public function deleteByGroupIdForProduct($sku){
+        foreach ($this->_scopedProductTierPriceManagement->getList($sku, $this->_groupId) as $productTierPrice) {
+            $this->_scopedProductTierPriceManagement->remove($sku, $productTierPrice);
+        }
+    }
+}

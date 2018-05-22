@@ -1,0 +1,109 @@
+<?php
+namespace Econsor\ProductPriceInterface\Model;
+
+use Econsor\ProductPriceInterface\Helper\Data as Config;
+use Magento\Framework\Serialize\SerializerInterface;
+
+/**
+ * Class ProductPriceBreaks
+ * @package Econsor\ProductPriceInterface\Model
+ */
+class ProductPriceBreaks
+{
+    /**
+     * @var \Zend\Soap\ClientFactory
+     */
+    protected $_soapClientFactory;
+    /**
+     * @var Config
+     */
+    protected $_config;
+    /**
+     * @var string
+     */
+    protected $_accountNumber;
+    /**
+     * @var string
+     */
+    protected $_productCode;
+    /**
+     * @var Cache\AuthCodeCache
+     */
+    protected $_authCodeCache;
+    /**
+     * @var SerializerInterface
+     */
+    protected $_serializer;
+
+    /**
+     * ProductPriceBreaks constructor.
+     * @param \Zend\Soap\ClientFactory $soapClientFactory
+     * @param Config $config
+     * @param Cache\AuthCodeCache $authCodeCache
+     * @param SerializerInterface $serializer
+     */
+    public function __construct(
+        \Zend\Soap\ClientFactory $soapClientFactory,
+        Config $config,
+        \Econsor\ProductPriceInterface\Model\Cache\AuthCodeCache $authCodeCache,
+        SerializerInterface $serializer
+    )
+    {
+        $this->_soapClientFactory = $soapClientFactory;
+        $this->_config = $config;
+        $this->_authCodeCache = $authCodeCache;
+        $this->_serializer = $serializer;
+    }
+
+    /**
+     * @param string $accountNumber
+     * @return ProductPriceBreaks
+     */
+    public function setAccountNumber(string $accountNumber): ProductPriceBreaks
+    {
+        $this->_accountNumber = $accountNumber;
+        return $this;
+    }
+
+    /**
+     * @param string $productCode
+     * @return ProductPriceBreaks
+     */
+    public function setProductCode(string $productCode): ProductPriceBreaks
+    {
+        $this->_productCode = $productCode;
+        return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function getPriceBreaks(){
+        if(isset($this->_accountNumber) && isset($this->_productCode) && $this->_accountNumber != "" && $this->_productCode != "" && ($interfaceUrl = $this->_config->getInterfaceUrl()) && ($authCode = $this->_authCodeCache->getAuthToken())){
+            /** @var \Zend\Soap\Client $soapClient */
+            $soapClient = $this->_soapClientFactory->create();
+            $soapClient->setWSDL($interfaceUrl);
+
+            $sku = $this->_productCode;
+            $requestParams = [
+                "accountNumber" => $this->_accountNumber,
+                "authToken" => $authCode,
+                "productCode" => $sku
+            ];
+
+            try {
+                $result = $this->_serializer->unserialize($soapClient->GetProductPriceBreaks($requestParams)->GetProductPriceBreaksResult);
+            } catch (\Exception $exception) {
+                //TODO Log exception during product price break generation
+                return [];
+            }
+            $result = array_map(function($item) use ($sku) {
+                $item["ProductCode"] = $sku;
+                return $item;
+            }, $result);
+            return $result;
+        }
+        //TODO Log couldnt get product price breaks
+        return [];
+    }
+}

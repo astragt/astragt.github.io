@@ -1,0 +1,117 @@
+<?php
+namespace Econsor\ProductPriceInterface\Model;
+
+use Magento\Checkout\Model\Session as CheckoutSession;
+use \Econsor\ProductPriceInterface\Model\Cache\AuthCodeCache;
+use \Econsor\ProductPriceInterface\Helper\Data as Config;
+use \Zend\Soap\ClientFactory;
+use \Magento\Framework\Serialize\SerializerInterface;
+
+/**
+ * Class PriceBreakCheck
+ * @package Econsor\ProductPriceInterface\Model
+ */
+class PriceBreakCheck
+{
+    /**
+     * @var CheckoutSession
+     */
+    protected $_checkoutSession;
+    /**
+     * @var AuthCodeCache
+     */
+    protected $_authCodeCache;
+    /**
+     * @var ClientFactory
+     */
+    protected $_soapClientFactory;
+    /**
+     * @var Config
+     */
+    protected $_config;
+    /**
+     * @var SerializerInterface
+     */
+    protected $_serializer;
+    /**
+     * @var string
+     */
+    protected $_accountNumber;
+
+    /**
+     * PriceBreakCheck constructor.
+     * @param CheckoutSession $checkoutSession
+     * @param AuthCodeCache $authCodeCache
+     * @param Config $config
+     * @param ClientFactory $clientFactory
+     * @param SerializerInterface $serializer
+     */
+    public function __construct(
+        CheckoutSession $checkoutSession,
+        AuthCodeCache $authCodeCache,
+        Config $config,
+        ClientFactory $clientFactory,
+        SerializerInterface $serializer
+    )
+    {
+         $this->_checkoutSession = $checkoutSession;
+         $this->_authCodeCache = $authCodeCache;
+         $this->_config = $config;
+         $this->_soapClientFactory = $clientFactory;
+         $this->_serializer = $serializer;
+    }
+
+    /**
+     * @param string $accountNumber
+     * @return PriceBreakCheck
+     */
+    public function setAccountNumber(string $accountNumber): PriceBreakCheck
+    {
+        $this->_accountNumber = $accountNumber;
+        return $this;
+    }
+
+    /**
+     * Loops cart items to check all through the webservice, returns all products with divergent prices
+     *
+     * @return array
+     */
+    public function checkCartPrices(){
+        if ($this->_accountNumber && ($interfaceUrl = $this->_config->getInterfaceUrl())) {
+            $soapClient = $this->_soapClientFactory->create();
+            $soapClient->setWSDL($interfaceUrl);
+
+            $requestParams["accountNumber"] = $this->_accountNumber;
+            $requestParams["authToken"] =  $this->_authCodeCache->getAuthToken();
+
+            foreach ($this->_checkoutSession->getQuote()->getAllVisibleItems() as $item){
+                $requestParams["cartItems"][] = [
+                    "Price" => $item->getPrice(),
+                    "Quantity" =>  $item->getQty(),
+                    "ProductCode" => $item->getSku()
+                ];
+
+                $origPrices[$item->getSku()] = (float)$item->getPrice();
+            }
+
+            if (isset($origPrices) && count($origPrices) > 0) {
+                try {
+                    $webServicePrices = $this->_serializer->unserialize($soapClient->CalculateCart($requestParams)->CalculateCartResult);
+                } catch (\Exception $exception){
+                    die(var_dump($exception->getMessage()));
+                    //TODO Log exception during product price break generation
+                    return [];
+                }
+                foreach ($webServicePrices as $webServicePrice) {
+                    if ($webServicePrice["Price"] != $origPrices[$webServicePrice["ProductCode"]]) {
+                        $changedPrices[] = $webServicePrice["ProductCode"];
+                    }
+                }
+
+                if(isset($changedPrices) && count($changedPrices) > 0)
+                    return $changedPrices;
+            }
+        }
+        return [];
+    }
+}
